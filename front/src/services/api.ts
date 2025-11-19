@@ -56,14 +56,6 @@ const MOCK_PIE_DATA: UnidadesVendidasCategoria[] = [
   { categoria: "Alimentos", unidades_vendidas: 56 },
 ];
 
-const MOCK_SCATTER_DATA: VentaPorProducto[] = [
-  { producto: "Papas Fritas", total_vendido: 45, precio: 2.50 },
-  { producto: "Coca Cola 2L", total_vendido: 78, precio: 2.90 },
-  { producto: "Agua Mineral", total_vendido: 120, precio: 1.20 },
-  { producto: "Galletas Oreo", total_vendido: 34, precio: 3.80 },
-  { producto: "Yogur Natural", total_vendido: 56, precio: 3.20 },
-  { producto: "Arroz 1kg", total_vendido: 67, precio: 1.80 },
-];
 
 const MOCK_LINE_DATA: MetodoPagoTiempo[] = [
   { fecha: "2025-11-01", Tarjeta: 450, Transferencia: 320, Efectivo: 180 },
@@ -125,10 +117,10 @@ export interface UnidadesVendidasCategoria {
 }
 
 export interface VentaPorProducto {
-  producto: string;
-  total_vendido: number;
-  precio: number;
+  precio: string;            // viene como "1500.00"
+  cantidad_vendida: string;  // viene como "21"
 }
+
 
 export interface MetodoPagoTiempo {
   fecha: string;
@@ -247,12 +239,19 @@ export const getUnidadesVendidasCategoria = async (): Promise<UnidadesVendidasCa
   try {
     const response = await fetch(`${API_BASE_URL}/estadisticas/unidades-vendidas-categoria`);
     if (!response.ok) throw new Error('Error al obtener estadísticas por categoría');
-    return response.json();
+
+    const data = await response.json();
+    return data.map((r: any) => ({
+      categoria: String(r.categoria),
+      unidades_vendidas: Number(r.unidades_vendidas)
+    }));
+
   } catch (error) {
     console.warn('Backend no disponible, usando datos mock para estadísticas de categoría');
     return MOCK_PIE_DATA;
   }
 };
+
 
 export const getVentasPorProductos = async (): Promise<VentaPorProducto[]> => {
   try {

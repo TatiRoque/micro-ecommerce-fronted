@@ -81,7 +81,14 @@ export default function App() {
       setVentas(ventasLocales);
 
       setPieData(pieChartData.map(item => ({ name: item.categoria, value: item.unidades_vendidas })));
-      setScatterData(scatterChartData.map(item => ({ x: item.precio, y: item.total_vendido, name: item.producto })));
+      setScatterData(
+  scatterChartData.map((item, index) => ({
+    x: Number(item.precio),
+    y: Number(item.cantidad_vendida),
+    name: `Producto ${index + 1}`
+  }))
+);
+
       setLineData(lineChartData);
 
     } catch (error) {
@@ -290,11 +297,11 @@ const handleBorrar = () => selectedVentaId ? setShowConfirmDelete(true) : null;
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                   <CartesianGrid />
-                  <XAxis type="number" dataKey="x" name="Precio" unit="$" />
-                  <YAxis type="number" dataKey="y" name="Cantidad" />
+                  <XAxis type="number" dataKey="x" name="precio" unit="$" />
+                  <YAxis type="number" dataKey="y" name="cantidad_vendida" />
                   <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                   <Scatter name="Productos" data={scatterData} fill="#3b82f6" />
-                </ScatterChart>
+                </ScatterChart> 
               </ResponsiveContainer>
             </div>
           </div>
@@ -303,18 +310,19 @@ const handleBorrar = () => selectedVentaId ? setShowConfirmDelete(true) : null;
         <StatCard>
           <div className="grid grid-cols-1 lg:grid-cols-[30%_70%] gap-6">
             <div className="h-64 flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={lineData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="mes" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="tarjeta" stroke="#3b82f6" name="Tarjeta" />
-                  <Line type="monotone" dataKey="efectivo" stroke="#10b981" name="Efectivo" />
-                  <Line type="monotone" dataKey="transferencia" stroke="#f59e0b" name="Transferencia" />
-                </LineChart>
-              </ResponsiveContainer>
+<ResponsiveContainer width="100%" height="100%">
+  <LineChart data={lineData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+    <CartesianGrid strokeDasharray="3 3" />
+    <XAxis dataKey="fecha" />
+    <YAxis />
+    <Tooltip />
+    <Legend />
+    <Line type="monotone" dataKey="Tarjeta" stroke="#3b82f6" name="Tarjeta" />
+    <Line type="monotone" dataKey="Efectivo" stroke="#10b981" name="Efectivo" />
+    <Line type="monotone" dataKey="Transferencia" stroke="#f59e0b" name="Transferencia" />
+  </LineChart>
+</ResponsiveContainer>
+
             </div>
             <div className="flex flex-col justify-center">
               <h2 className="text-teal-600 mb-3 border border-teal-400 px-4 py-2 rounded-lg bg-teal-50">Tendencia de Métodos de Pago</h2>
