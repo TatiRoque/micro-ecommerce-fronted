@@ -119,8 +119,8 @@ export interface UnidadesVendidasCategoria {
 
 
 export interface VentaPorProducto {
-  precio: string;            // viene como "1500.00"
-  cantidad_vendida: string;  // viene como "21"
+  precio: string;            
+  cantidad_vendida: string;  
 }
 
 export interface MetodoPagoTiempo {
@@ -197,7 +197,7 @@ export const createVenta = async (venta: VentaCreate): Promise<Venta> => {
     return response.json();
   } catch (error) {
     console.warn('Backend no disponible, simulando creación de venta');
-    // Simular creación de venta
+
     const nuevaVenta: Venta = {
       id_venta: Math.floor(Math.random() * 10000),
       fecha: venta.fecha,
@@ -222,7 +222,6 @@ export const updateVenta = async (id: number, venta: Partial<VentaCreate>): Prom
     return response.json();
   } catch (error) {
     console.warn('Backend no disponible, simulando actualización de venta');
-    // Simular actualización de venta
     const ventaActualizada: Venta = {
       id_venta: id,
       fecha: venta.fecha || new Date().toISOString(),
@@ -242,7 +241,7 @@ export const deleteVenta = async (id: number): Promise<void> => {
     if (!response.ok) throw new Error('Error al eliminar venta');
   } catch (error) {
     console.warn('Backend no disponible, simulando eliminación de venta');
-    // Simular eliminación
+
   }
 };
 
@@ -258,14 +257,14 @@ export const getUnidadesVendidasCategoria = async (): Promise<UnidadesVendidasCa
     return data.map((r: any) => ({
       categoria: String(r.categoria),
       unidades_vendidas: Number(r.unidades_vendidas),
-      promedio: Number(r.promedio)        // ✅ AGREGADO
+      promedio: Number(r.promedio)       
     }));
 
   } catch (error) {
     console.warn('Backend no disponible, usando datos mock para estadísticas de categoría');
     return MOCK_PIE_DATA.map(d => ({
       ...d,
-      promedio: d.unidades_vendidas / 10   // mock simple para evitar undefined
+      promedio: d.unidades_vendidas / 10   
     }));
   }
 };
@@ -314,7 +313,6 @@ export async function getCorrelacionPearson(): Promise<PearsonResponse> {
         return res.json();
       } catch (error) {
         console.warn("Usando mock para Pearson");
-        // Retornar dato dummy si falla el backend
         return { coeficiente: -0.1543, interpretacion: "Débil Negativa" };
       }
     }

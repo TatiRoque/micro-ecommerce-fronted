@@ -26,6 +26,7 @@ interface VentaLocal {
 }
 
 export default function App() {
+  // --- Estados principales ---
   const [pearson, setPearson] = useState<PearsonResponse | null>(null);
   const [clientes, setClientes] = useState<api.Cliente[]>([]);
   const [productos, setProductos] = useState<api.Producto[]>([]);
@@ -37,7 +38,6 @@ export default function App() {
   const [promediosCategoria, setPromediosCategoria] = useState<
     { categoria: string; promedio: number }[]
   >([]);
-
 
   const [selectedVentaId, setSelectedVentaId] = useState<number | null>(null);
   const [formCliente, setFormCliente] = useState<number | null>(null);
@@ -51,16 +51,18 @@ export default function App() {
 
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-  useEffect(() => { loadInitialData();
+  // Carga inicial de datos y coeficiente de Pearson
+  useEffect(() => { 
+    loadInitialData();
+    api.getCorrelacionPearson()
+      .then(setPearson)
+      .catch((err) => {
+        console.error("Error Pearson:", err);
+        setPearson(null);
+      });
+  }, []);
 
-  api.getCorrelacionPearson()
-    .then(setPearson)
-    .catch((err) => {
-      console.error("Error Pearson:", err);
-      setPearson(null);
-    });
-}, []);
-
+  // Carga todos los datos necesarios para los gráficos y la app
   const loadInitialData = async () => {
     try {
       setLoading(true);
@@ -85,16 +87,12 @@ export default function App() {
       // tendencia para el gráfico
       setLineData(metodosPagoData.tendencia);
       setDesvioMetodosPago(metodosPagoData.desvio);
-
-
-      // NUEVO: desvío estándar disponible aquí:
       console.log("Desvío estándar:", metodosPagoData.desvio);
 
       setClientes(clientesData);
       // Asegurar que el precio sea tipo Number si viene como string
       setProductos(productosData.map(p => ({ ...p, precio: Number(p.precio) })));
 
-      // CORRECCIÓN 1: Asegurar que total_venta y fecha se mapeen correctamente
       const ventasLocales: VentaLocal[] = ventasData.map(v => ({
         id_venta: v.id_venta,
         // Usar la fecha del backend y formatearla
@@ -117,8 +115,6 @@ export default function App() {
         }))
       );
 
-
-
       setScatterData(
         scatterChartData.map((item, index) => ({
           x: Number(item.precio),
@@ -127,13 +123,12 @@ export default function App() {
         }))
       );
 
-
-
     } catch (error) {
       console.error(error);
     } finally { setLoading(false); }
   };
 
+  // Selecciona una venta para editar
   const handleSelectVenta = (ventaId: number) => {
     const venta = ventas.find(v => v.id_venta === ventaId);
     if (!venta) return;
@@ -141,12 +136,12 @@ export default function App() {
     setSelectedVentaId(ventaId);
     setFormCliente(venta.id_cliente);
     setFormMetodoPago(venta.metodo_pago);
-    // CORRECCIÓN 2: Asegurar que formProductos sea un objeto, incluso si productos es null/undefined
     setFormProductos(venta.productos || {});
   };
 
+  // Cambia la cantidad de un producto en el formulario
   const handleProductoChange = (productoId: number, cantidad: number) => {
-    // Si la cantidad es 0, removemos el producto, si no, lo actualizamos.
+    // Si la cantidad es 0, se remueve el producto, si no, se actualiza.
     setFormProductos(prev => {
       if (cantidad <= 0) {
         const { [productoId]: _, ...rest } = prev;
@@ -156,6 +151,7 @@ export default function App() {
     });
   };
 
+  // Calcula totales para el formulario de venta
   const calcularTotales = () => {
     let totalProductos = 0, montoTotal = 0;
     Object.entries(formProductos).forEach(([prodId, cantidad]) => {
@@ -169,6 +165,7 @@ export default function App() {
   };
   const { totalProductos, montoTotal } = calcularTotales();
 
+  // Limpia el formulario de venta
   const handleLimpiarFormulario = () => {
     setSelectedVentaId(null);
     setFormCliente(null);
@@ -176,6 +173,7 @@ export default function App() {
     setFormProductos({});
   };
 
+  // Guardar (crear o actualizar) una venta
   const handleGuardar = async () => {
     // Validaciones
     if (!formCliente || !formMetodoPago) {
@@ -207,8 +205,6 @@ export default function App() {
       if (selectedVentaId) {
         // --- Actualizar Venta ---
         savedVenta = await api.updateVenta(selectedVentaId, ventaToSave);
-
-        // CORRECCIÓN 3.1: Mapeo de la venta actualizada (usando total_venta del API)
         setVentas(prev => prev.map(v => v.id_venta === selectedVentaId ? ({
           ...v,
           // Mantenemos la fecha local (o usamos la del API si es necesario formatearla)
@@ -223,8 +219,6 @@ export default function App() {
       } else {
         // --- Crear Venta ---
         savedVenta = await api.createVenta(ventaToSave);
-
-        // CORRECCIÓN 3.2: Mapeo de la nueva venta (usando total_venta y fecha del API)
         const nuevaVenta: VentaLocal = {
           id_venta: savedVenta.id_venta,
           // Formatear la fecha recibida del API
@@ -246,6 +240,7 @@ export default function App() {
     }
   };
 
+  // Borrar una venta seleccionada
   const handleBorrar = () => selectedVentaId ? setShowConfirmDelete(true) : null;
   const confirmBorrar = async () => {
     if (!selectedVentaId) return;
@@ -261,11 +256,11 @@ export default function App() {
     }
   };
 
+  // Obtiene los datos a mostrar en la tabla de ventas
   const getVentaDisplay = (venta: VentaLocal) => {
     const cliente = clientes.find(c => c.id_cliente === venta.id_cliente);
     const metodo = metodosPago.find(m => m.id === venta.metodo_pago);
     const cantidadProductos = Object.values(venta.productos).reduce((sum, val) => sum + val, 0);
-    // CORRECCIÓN 4: Usar total_venta de la venta local para el monto total
     return {
       cliente: cliente?.nombre || "N/A",
       metodo: metodo?.nombre || "N/A",
@@ -350,7 +345,6 @@ export default function App() {
           )}
         </StatCard>
 
-
         <StatCard>
           <div className="grid grid-cols-1 lg:grid-cols-[70%_30%] gap-6">
             <div className="flex flex-col justify-center order-2 lg:order-1">
@@ -406,8 +400,6 @@ export default function App() {
             </div>
           </div>
 
-
-
           {desvioMetodosPago && (
             <div className="max-w-md mx-auto mt-8 p-6 bg-white border border-gray-200 rounded-lg">
               <h2 className="text-gray-900 text-lg font-semibold mb-6">
@@ -439,11 +431,7 @@ export default function App() {
             </div>
           )}
 
-
-
-
         </StatCard>
-
 
         {/* --- Gestión de Ventas --- */}
         <div className="grid grid-cols-1 lg:grid-cols-[60%_40%] gap-6">
@@ -557,7 +545,7 @@ export default function App() {
         </div>
       </div>
 
-
+      {/* Modales */}
       <ConfirmDeleteModal open={showConfirmDelete} onOpenChange={setShowConfirmDelete} onConfirm={confirmBorrar} />
       <ErrorModal open={errorModal.show} onOpenChange={(show) => setErrorModal({ ...errorModal, show })} title={errorModal.title} description={errorModal.description} />
     </div>
