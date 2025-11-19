@@ -114,7 +114,9 @@ export interface VentaCreate {
 export interface UnidadesVendidasCategoria {
   categoria: string;
   unidades_vendidas: number;
+  promedio: number; 
 }
+
 
 export interface VentaPorProducto {
   precio: string;            // viene como "1500.00"
@@ -252,16 +254,22 @@ export const getUnidadesVendidasCategoria = async (): Promise<UnidadesVendidasCa
     if (!response.ok) throw new Error('Error al obtener estadísticas por categoría');
 
     const data = await response.json();
+
     return data.map((r: any) => ({
       categoria: String(r.categoria),
-      unidades_vendidas: Number(r.unidades_vendidas)
+      unidades_vendidas: Number(r.unidades_vendidas),
+      promedio: Number(r.promedio)        // ✅ AGREGADO
     }));
 
   } catch (error) {
     console.warn('Backend no disponible, usando datos mock para estadísticas de categoría');
-    return MOCK_PIE_DATA;
+    return MOCK_PIE_DATA.map(d => ({
+      ...d,
+      promedio: d.unidades_vendidas / 10   // mock simple para evitar undefined
+    }));
   }
 };
+
 
 
 export const getVentasPorProductos = async (): Promise<VentaPorProducto[]> => {

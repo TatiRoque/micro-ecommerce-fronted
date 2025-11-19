@@ -32,6 +32,10 @@ export default function App() {
   const [scatterData, setScatterData] = useState<{ x: number; y: number; name: string }[]>([]);
   const [lineData, setLineData] = useState<any[]>([]);
   const [desvioMetodosPago, setDesvioMetodosPago] = useState<api.DesvioMetodosPago | null>(null);
+  const [promediosCategoria, setPromediosCategoria] = useState<
+    { categoria: string; promedio: number }[]
+  >([]);
+
 
   const [selectedVentaId, setSelectedVentaId] = useState<number | null>(null);
   const [formCliente, setFormCliente] = useState<number | null>(null);
@@ -59,7 +63,7 @@ export default function App() {
         ventasData,
         pieChartData,
         scatterChartData,
-        metodosPagoData     // <-- ahora es un OBJETO con tendencia + desvio
+        metodosPagoData
       ] = await Promise.all([
         api.getClientes(),
         api.getProductos(),
@@ -96,6 +100,15 @@ export default function App() {
       setVentas(ventasLocales);
 
       setPieData(pieChartData.map(item => ({ name: item.categoria, value: item.unidades_vendidas })));
+      setPromediosCategoria(
+        pieChartData.map(item => ({
+          categoria: item.categoria,
+          promedio: item.promedio
+        }))
+      );
+
+
+
       setScatterData(
         scatterChartData.map((item, index) => ({
           x: Number(item.precio),
@@ -296,11 +309,37 @@ export default function App() {
               </ResponsiveContainer>
             </div>
             <div className="flex flex-col justify-center">
-              <h2 className="text-teal-600 mb-3 border border-teal-400 px-4 py-2 rounded-lg bg-teal-50">Ventas por Categoría</h2>
-              <p className="text-gray-600">Proporción de unidades vendidas por categoría.</p>
+              <h2 className="text-gray-900 text-lg font-semibold mb-2">
+                Ventas por Categoría
+              </h2>
+              <p className="text-gray-600 text-sm">Proporción de unidades vendidas por categoría.</p>
             </div>
           </div>
+
+          {/* === PROMEDIO POR CATEGORÍA === */}
+          {promediosCategoria.length > 0 && (
+            <div className="max-w-md mx-auto mt-8 p-6 bg-white border border-gray-200 rounded-lg">
+              <h2 className="text-gray-900 text-lg font-semibold mb-6">
+                Promedio por Categoría
+              </h2>
+              <div className="space-y-5">
+                {promediosCategoria.map((cat, index) => (
+                  <div
+                    key={cat.categoria}
+                    className={`flex justify-between items-center ${index < promediosCategoria.length - 1 ? 'pb-3 border-b border-gray-100' : ''
+                      }`}
+                  >
+                    <span className="text-gray-600">{cat.categoria}</span>
+                    <span className="text-xl font-semibold text-gray-900">
+                      {cat.promedio.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </StatCard>
+
 
         <StatCard>
           <div className="grid grid-cols-1 lg:grid-cols-[70%_30%] gap-6">
