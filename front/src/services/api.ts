@@ -121,13 +121,24 @@ export interface VentaPorProducto {
   cantidad_vendida: string;  // viene como "21"
 }
 
-
 export interface MetodoPagoTiempo {
   fecha: string;
   Tarjeta: number;
   Transferencia: number;
   Efectivo: number;
 }
+
+export interface DesvioMetodosPago {
+  Tarjeta: number;
+  Efectivo: number;
+  Transferencia: number;
+}
+
+export interface RespuestaMetodosPago {
+  tendencia: MetodoPagoTiempo[];
+  desvio: DesvioMetodosPago;
+}
+
 
 // ==================== CRUD ENDPOINTS ====================
 
@@ -264,13 +275,20 @@ export const getVentasPorProductos = async (): Promise<VentaPorProducto[]> => {
   }
 };
 
-export const getMetodosPagoTiempo = async (): Promise<MetodoPagoTiempo[]> => {
+export const getMetodosPagoTiempo = async (): Promise<RespuestaMetodosPago> => {
   try {
     const response = await fetch(`${API_BASE_URL}/estadisticas/metodos-pago-tiempo`);
     if (!response.ok) throw new Error('Error al obtener métodos de pago por tiempo');
     return response.json();
   } catch (error) {
     console.warn('Backend no disponible, usando datos mock para métodos de pago');
-    return MOCK_LINE_DATA;
+    return {
+      tendencia: MOCK_LINE_DATA,
+      desvio: {
+        Tarjeta: 0,
+        Efectivo: 0,
+        Transferencia: 0
+      }
+    };
   }
 };

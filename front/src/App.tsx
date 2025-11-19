@@ -31,6 +31,7 @@ export default function App() {
   const [pieData, setPieData] = useState<{ name: string; value: number }[]>([]);
   const [scatterData, setScatterData] = useState<{ x: number; y: number; name: string }[]>([]);
   const [lineData, setLineData] = useState<any[]>([]);
+  const [desvioMetodosPago, setDesvioMetodosPago] = useState<api.DesvioMetodosPago | null>(null);
 
   const [selectedVentaId, setSelectedVentaId] = useState<number | null>(null);
   const [formCliente, setFormCliente] = useState<number | null>(null);
@@ -52,7 +53,14 @@ export default function App() {
       const backendConnected = await api.checkBackendConnection();
       setUsingMockData(!backendConnected);
 
-      const [clientesData, productosData, ventasData, pieChartData, scatterChartData, lineChartData] = await Promise.all([
+      const [
+        clientesData,
+        productosData,
+        ventasData,
+        pieChartData,
+        scatterChartData,
+        metodosPagoData     // <-- ahora es un OBJETO con tendencia + desvio
+      ] = await Promise.all([
         api.getClientes(),
         api.getProductos(),
         api.getVentas(),
@@ -60,6 +68,13 @@ export default function App() {
         api.getVentasPorProductos(),
         api.getMetodosPagoTiempo()
       ]);
+      // tendencia para el gráfico
+      setLineData(metodosPagoData.tendencia);
+      setDesvioMetodosPago(metodosPagoData.desvio);
+
+
+      // NUEVO: desvío estándar disponible aquí:
+      console.log("Desvío estándar:", metodosPagoData.desvio);
 
       setClientes(clientesData);
       // Asegurar que el precio sea tipo Number si viene como string
@@ -69,7 +84,7 @@ export default function App() {
       const ventasLocales: VentaLocal[] = ventasData.map(v => ({
         id_venta: v.id_venta,
         // Usar la fecha del backend y formatearla
-        fecha: new Date(v.fecha).toLocaleDateString('es-ES'), 
+        fecha: new Date(v.fecha).toLocaleDateString('es-ES'),
         id_cliente: v.id_cliente,
         metodo_pago: v.metodo_pago,
         // Usar total_venta directamente del backend/mock
@@ -82,14 +97,14 @@ export default function App() {
 
       setPieData(pieChartData.map(item => ({ name: item.categoria, value: item.unidades_vendidas })));
       setScatterData(
-  scatterChartData.map((item, index) => ({
-    x: Number(item.precio),
-    y: Number(item.cantidad_vendida),
-    name: `Producto ${index + 1}`
-  }))
-);
+        scatterChartData.map((item, index) => ({
+          x: Number(item.precio),
+          y: Number(item.cantidad_vendida),
+          name: `Producto ${index + 1}`
+        }))
+      );
 
-      setLineData(lineChartData);
+
 
     } catch (error) {
       console.error(error);
@@ -99,12 +114,12 @@ export default function App() {
   const handleSelectVenta = (ventaId: number) => {
     const venta = ventas.find(v => v.id_venta === ventaId);
     if (!venta) return;
-    
+
     setSelectedVentaId(ventaId);
     setFormCliente(venta.id_cliente);
     setFormMetodoPago(venta.metodo_pago);
     // CORRECCIÓN 2: Asegurar que formProductos sea un objeto, incluso si productos es null/undefined
-    setFormProductos(venta.productos || {}); 
+    setFormProductos(venta.productos || {});
   };
 
   const handleProductoChange = (productoId: number, cantidad: number) => {
@@ -151,10 +166,10 @@ export default function App() {
       setErrorModal({ show: true, title: "Error", description: "Debe agregar al menos un producto con cantidad mayor a cero." });
       return;
     }
-    
+
     const ventaToSave: api.VentaCreate = {
       // Usamos la fecha actual para crear o actualizar el registro en la DB
-      fecha: new Date().toISOString(), 
+      fecha: new Date().toISOString(),
       id_cliente: formCliente,
       metodo_pago: formMetodoPago,
       detalles: productosConCantidad.map(([id, cantidad]) => ({
@@ -169,7 +184,7 @@ export default function App() {
       if (selectedVentaId) {
         // --- Actualizar Venta ---
         savedVenta = await api.updateVenta(selectedVentaId, ventaToSave);
-        
+
         // CORRECCIÓN 3.1: Mapeo de la venta actualizada (usando total_venta del API)
         setVentas(prev => prev.map(v => v.id_venta === selectedVentaId ? ({
           ...v,
@@ -185,7 +200,7 @@ export default function App() {
       } else {
         // --- Crear Venta ---
         savedVenta = await api.createVenta(ventaToSave);
-        
+
         // CORRECCIÓN 3.2: Mapeo de la nueva venta (usando total_venta y fecha del API)
         const nuevaVenta: VentaLocal = {
           id_venta: savedVenta.id_venta,
@@ -198,17 +213,17 @@ export default function App() {
         };
         setVentas(prev => [...prev, nuevaVenta]);
       }
-      
+
       handleLimpiarFormulario();
       // Recargar datos de gráficos si se modificaron ventas
-      loadInitialData(); 
+      loadInitialData();
 
     } catch (error) {
       setErrorModal({ show: true, title: "Error", description: "No se pudo guardar la venta" });
     }
   };
 
-const handleBorrar = () => selectedVentaId ? setShowConfirmDelete(true) : null;
+  const handleBorrar = () => selectedVentaId ? setShowConfirmDelete(true) : null;
   const confirmBorrar = async () => {
     if (!selectedVentaId) return;
     try {
@@ -217,7 +232,7 @@ const handleBorrar = () => selectedVentaId ? setShowConfirmDelete(true) : null;
       handleLimpiarFormulario();
       setShowConfirmDelete(false);
       // Recargar datos de gráficos
-      loadInitialData(); 
+      loadInitialData();
     } catch (error) {
       setErrorModal({ show: true, title: "Error", description: "No se pudo eliminar la venta" });
     }
@@ -228,10 +243,10 @@ const handleBorrar = () => selectedVentaId ? setShowConfirmDelete(true) : null;
     const metodo = metodosPago.find(m => m.id === venta.metodo_pago);
     const cantidadProductos = Object.values(venta.productos).reduce((sum, val) => sum + val, 0);
     // CORRECCIÓN 4: Usar total_venta de la venta local para el monto total
-    return { 
-      cliente: cliente?.nombre || "N/A", 
-      metodo: metodo?.nombre || "N/A", 
-      cantidadProductos, 
+    return {
+      cliente: cliente?.nombre || "N/A",
+      metodo: metodo?.nombre || "N/A",
+      cantidadProductos,
       monto: venta.total_venta // Usar la propiedad ya calculada/retornada del API
     };
   };
@@ -301,7 +316,7 @@ const handleBorrar = () => selectedVentaId ? setShowConfirmDelete(true) : null;
                   <YAxis type="number" dataKey="y" name="cantidad_vendida" />
                   <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                   <Scatter name="Productos" data={scatterData} fill="#3b82f6" />
-                </ScatterChart> 
+                </ScatterChart>
               </ResponsiveContainer>
             </div>
           </div>
@@ -310,26 +325,66 @@ const handleBorrar = () => selectedVentaId ? setShowConfirmDelete(true) : null;
         <StatCard>
           <div className="grid grid-cols-1 lg:grid-cols-[30%_70%] gap-6">
             <div className="h-64 flex items-center justify-center">
-<ResponsiveContainer width="100%" height="100%">
-  <LineChart data={lineData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-    <CartesianGrid strokeDasharray="3 3" />
-    <XAxis dataKey="fecha" />
-    <YAxis />
-    <Tooltip />
-    <Legend />
-    <Line type="monotone" dataKey="Tarjeta" stroke="#3b82f6" name="Tarjeta" />
-    <Line type="monotone" dataKey="Efectivo" stroke="#10b981" name="Efectivo" />
-    <Line type="monotone" dataKey="Transferencia" stroke="#f59e0b" name="Transferencia" />
-  </LineChart>
-</ResponsiveContainer>
-
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={lineData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="fecha" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="Tarjeta" stroke="#3b82f6" name="Tarjeta" />
+                  <Line type="monotone" dataKey="Efectivo" stroke="#10b981" name="Efectivo" />
+                  <Line type="monotone" dataKey="Transferencia" stroke="#f59e0b" name="Transferencia" />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
+
             <div className="flex flex-col justify-center">
-              <h2 className="text-teal-600 mb-3 border border-teal-400 px-4 py-2 rounded-lg bg-teal-50">Tendencia de Métodos de Pago</h2>
+              <h2 className="text-teal-600 mb-3 border border-teal-400 px-4 py-2 rounded-lg bg-teal-50">
+                Tendencia de Métodos de Pago
+              </h2>
               <p className="text-gray-600">Evolución de ventas por método de pago.</p>
             </div>
           </div>
+
+
+
+          {desvioMetodosPago && (
+            <div className="max-w-md mx-auto mt-8 p-6 bg-white border border-gray-200 rounded-lg">
+              <h2 className="text-gray-900 text-lg font-semibold mb-6">
+                Desvío Estándar
+              </h2>
+
+              <div className="space-y-5">
+                <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+                  <span className="text-gray-600">Tarjeta</span>
+                  <span className="text-xl font-semibold text-gray-900">
+                    {desvioMetodosPago.Tarjeta.toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+                  <span className="text-gray-600">Efectivo</span>
+                  <span className="text-xl font-semibold text-gray-900">
+                    {desvioMetodosPago.Efectivo.toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Transferencia</span>
+                  <span className="text-xl font-semibold text-gray-900">
+                    {desvioMetodosPago.Transferencia.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+
+
+
         </StatCard>
+
 
         {/* --- Gestión de Ventas --- */}
         <div className="grid grid-cols-1 lg:grid-cols-[60%_40%] gap-6">
@@ -374,8 +429,8 @@ const handleBorrar = () => selectedVentaId ? setShowConfirmDelete(true) : null;
               {/* Cliente */}
               <div>
                 <label className="block text-gray-700 mb-2">Cliente</label>
-                <Select 
-                  value={formCliente?.toString() || ""} 
+                <Select
+                  value={formCliente?.toString() || ""}
                   onValueChange={(v: string) => setFormCliente(parseInt(v))}
                 >
                   <SelectTrigger><SelectValue placeholder="Seleccionar Cliente..." /></SelectTrigger>
