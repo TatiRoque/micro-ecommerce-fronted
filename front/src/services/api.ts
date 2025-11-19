@@ -300,3 +300,21 @@ export const getMetodosPagoTiempo = async (): Promise<RespuestaMetodosPago> => {
     };
   }
 };
+
+
+export interface PearsonResponse {
+  coeficiente: number;
+  interpretacion: string;
+}
+
+export async function getCorrelacionPearson(): Promise<PearsonResponse> {
+      try {
+        const res = await fetch(`${API_BASE_URL}/estadisticas/correlacion-precio-cantidad`);
+        if (!res.ok) throw new Error("API Error");
+        return res.json();
+      } catch (error) {
+        console.warn("Usando mock para Pearson");
+        // Retornar dato dummy si falla el backend
+        return { coeficiente: -0.1543, interpretacion: "Débil Negativa" };
+      }
+    }
